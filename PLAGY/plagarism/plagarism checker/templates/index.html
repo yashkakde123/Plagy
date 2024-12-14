@@ -77,17 +77,17 @@ button:hover {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-</style>
+    </style>
+</head>
 <body>
     <div class="container">
         <h1>Plagy</h1>
-        <form action="/detect" method="post">
+        <form action="/detect" method="post" onsubmit="showLoader()">
             <textarea name="text" placeholder="Enter text here..." required></textarea>
             <button type="submit">Check for Plagiarism</button>
         </form>
-        <form action="/upload" method="post" enctype="multipart/form-data">
-            <input type="file" name="file" accept=".txt,.pdf">  <!-- Accept only text files -->
+        <form action="/upload" method="post" enctype="multipart/form-data" onsubmit="showLoader()">
+            <input type="file" name="file" accept=".txt,.pdf" required>  <!-- Accept only text files -->
             <button type="submit">Upload File</button>
         </form>
         <div id="loader">
