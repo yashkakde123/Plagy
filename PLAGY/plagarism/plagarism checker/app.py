@@ -1,56 +1,56 @@
-from flask import Flask, render_template, request, redirect, url_for
+import streamlit as st
 import pickle
-import os
-import PyPDF2
 import io
+import PyPDF2
+from docx import Document  # For handling Word files
 
-app = Flask(__name__)
+# Load the model and vectorizer
+model = pickle.load(open('C:/Users/ASUS/Desktop/PLAGY/plagarism/plagarism_checker.py/model.pkl', 'rb'))
+tfidf_vectorizer = pickle.load(open('C:/Users/ASUS/Desktop/PLAGY/plagarism/plagarism_checker.py/tfidf_vectorizer.pkl', 'rb'))
 
-model = pickle.load(open('model.pkl', 'rb'))
-tfidf_vectorizer = pickle.load(open('tfidf_vectorizer.pkl', 'rb'))
-
+# Function to detect plagiarism
 def detect(input_text):
     vectorized_text = tfidf_vectorizer.transform([input_text])
     probabilities = model.predict_proba(vectorized_text)
     plagiarism_probability = probabilities[0][1]  # Probability of class 1 (Plagiarism)
     plagiarism_percentage = plagiarism_probability * 100
     
-    return f"Plagiarism Detected: {plagiarism_percentage:.2f}% plagarized" if plagiarism_probability >= 0.5 else f"No Plagiarism: {100 - plagiarism_percentage:.2f}% original"
+    return f"Plagiarism Detected: {plagiarism_percentage:.2f}% plagiarized" if plagiarism_probability >= 0.5 else f"No Plagiarism: {100 - plagiarism_percentage:.2f}% original"
 
-@app.route('/')
-def home():
-    return render_template('index.html')
+# Streamlit App
+st.title("Plagiarism Detection App")
+st.write("Upload a file or enter text to check for plagiarism.")
 
-@app.route('/detect', methods=['POST'])
-def detect_plagiarism():
-    input_text = request.form['text']
-    detection_result = detect(input_text)
-    return render_template('index.html', result=detection_result)
+# Text input
+input_text = st.text_area("Enter text here:", placeholder="Paste your text here...")
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return redirect(request.url)
-    
-    file = request.files['file']
-    
-    if file.filename == '':
-        return redirect(request.url)
-    
-    input_text = ""
-    if file.filename.endswith('.txt'):
-        input_text = file.read().decode('utf-8')  # Read text file directly
-    elif file.filename.endswith('.pdf'):
-        with io.BytesIO(file.read()) as f:  # Read PDF file directly into memory
+# File upload
+uploaded_file = st.file_uploader("Or upload a file:", type=["txt", "pdf", "docx"])
+
+# Display uploaded file content
+if uploaded_file is not None:
+    st.subheader("Uploaded File Content:")
+    if uploaded_file.name.endswith('.txt'):
+        input_text = uploaded_file.read().decode('utf-8')  # Read text file
+    elif uploaded_file.name.endswith('.pdf'):
+        with io.BytesIO(uploaded_file.read()) as f:
             reader = PyPDF2.PdfReader(f)
             input_text = ""
             for page in reader.pages:
-                input_text += page.extract_text()  # Extract text from each page
-    
-    # Call the detect function with the file contents
-    detection_result = detect(input_text)
-    
-    return render_template('index.html', result=detection_result)  # Pass the result to the template
+                input_text += page.extract_text()  # Extract text from PDF
+    elif uploaded_file.name.endswith('.docx'):
+        with io.BytesIO(uploaded_file.read()) as f:
+            doc = Document(f)
+            input_text = ""
+            for para in doc.paragraphs:
+                input_text += para.text + "\n"  # Extract text from Word file
+    st.write(input_text)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# Check for plagiarism
+if st.button("Check for Plagiarism"):
+    if input_text:
+        result = detect(input_text)  # Call the detect function
+        st.subheader("Result:")
+        st.success(result)
+    else:
+        st.error("Please enter text or upload a file to check for plagiarism.")
